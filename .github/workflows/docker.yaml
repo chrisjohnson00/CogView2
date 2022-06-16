@@ -13,7 +13,7 @@ jobs:
       - name: 'Prepare'
         id: 'prep'
         run: |
-          DOCKER_IMAGE=${{ github.repository }}
+          DOCKER_IMAGE=${{ github.repository }} 
           VERSION=edge
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/}
@@ -30,8 +30,8 @@ jobs:
             PUSH=false
           fi
           TAGS="${DOCKER_IMAGE}:${VERSION//\//-}"
-          echo ::set-output name=tags::${TAGS}
-          echo ::set-output name=version::${VERSION//\//-}
+          echo ::set-output name=tags::${TAGS} | tr '[:upper:]' '[:lower:]'
+          echo ::set-output name=version::${VERSION//\//-} | tr '[:upper:]' '[:lower:]'
           echo ::set-output name=push::${PUSH}
       - name: 'Setup Docker Buildx'
         uses: 'docker/setup-buildx-action@v2'
