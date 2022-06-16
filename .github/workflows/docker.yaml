@@ -1,0 +1,69 @@
+name: 'CI'
+
+on:
+  push:
+    branches: ['**']
+
+jobs:
+  container_build:
+    name: 'Build and Push Docker Container'
+    runs-on: 'ubuntu-20.04'
+    steps:
+      - uses: 'actions/checkout@v3'
+      - name: 'Prepare'
+        id: 'prep'
+        run: |
+          DOCKER_IMAGE=${{ github.repository }}
+          VERSION=edge
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          fi
+          if [[ $GITHUB_REF == refs/heads/* ]]; then
+            VERSION=${GITHUB_REF#refs/heads/}
+            if [[ $VERSION == main ]]; then
+              VERSION=latest
+            fi
+          fi
+          PUSH=true
+          if [[ $GITHUB_REF == refs/heads/dependabot* ]]; then
+            echo "Dependabot branch"
+            PUSH=false
+          fi
+          TAGS="${DOCKER_IMAGE}:${VERSION//\//-}"
+          echo ::set-output name=tags::${TAGS}
+          echo ::set-output name=version::${VERSION//\//-}
+          echo ::set-output name=push::${PUSH}
+      - name: 'Setup Docker Buildx'
+        uses: 'docker/setup-buildx-action@v2'
+      - name: 'Cache Docker layers'
+        uses: 'actions/cache@v3.0.4'
+        with:
+          path: '/tmp/.buildx-cache'
+          key: '${{ runner.os }}-buildx-${{ steps.prep.outputs.version }}'
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+            ${{ runner.os }}-buildx-${{ steps.prep.outputs.version }}
+      - name: 'Login to DockerHub'
+        uses: 'docker/login-action@v2'
+        with:
+          username: 'chrisjohnson00'
+          password: '${{ secrets.DOCKER_HUB_PASSWORD }}'
+      - name: 'Build and push'
+        id: 'docker_build'
+        uses: 'docker/build-push-action@v3'
+        with:
+          context: '.'
+          file: './Dockerfile'
+          # ensure latest base image is used
+          pull: 'true'
+          # publish
+          push: '${{ steps.prep.outputs.push }}'
+          # tags determined by prep step
+          tags: '${{ steps.prep.outputs.tags }}'
+          cache-from: 'type=local,src=/tmp/.buildx-cache'
+          cache-to: 'type=local,dest=/tmp/.buildx-cache'
+          labels: |
+            org.opencontainers.image.documentation=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.prep.outputs.version }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}

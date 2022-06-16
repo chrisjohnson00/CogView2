@@ -11,5 +11,5 @@ RUN pip3 install -r /requirements.txt
 
 RUN git clone https://github.com/Sleepychord/Image-Local-Attention /tmp/image
 
-RUN cd /tmp/image && \
-    python3 setup.py install
+#RUN cd /tmp/image && \
+#    python3 setup.py install
